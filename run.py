@@ -7,10 +7,16 @@ import hashlib
 import locale
 import pymysql
 import time
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+import requests
+import datetime
+import bard,os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8ffe05624dfe0efdf7c7f67288d4f4ce5005e0dfb6a1bc48366ef9906dd0586e'
 locale.setlocale( locale.LC_ALL, 'en_CA.UTF-8') # To get money formatting
+api_key = os.environ.get("WEATHER_API_KEY")
+secret_key = os.environ.get("SECRET_KEY")
 
 #####################################################################
 #                          SQL Queries                              #
@@ -52,7 +58,7 @@ def index():
 def home():
 
 	# Disallow unlogged in users from requesting homepage.
-	if 'username' not in session or session['username'] is '':
+	if 'username' not in session or session['username'] == '':
 		return redirect(url_for('index'))
 
 	return create_trip(no_error=True)
@@ -419,10 +425,8 @@ def create_activity():
 	query = add_attraction_to_trip(attraction_name, activity_name, start_time, end_time, date, cost)
 	cursor.execute(query)
 	db.commit()
-
-	success = attraction_name + " added to My Trip!"
-	attractions = get_attractions_data()
-	return render_template('attractions.html', items=attractions, session=session, success=success)
+	# attractions = get_attractions_data()
+	return redirect(url_for('trip'))
 
 # Delete an attraction
 @app.route('/delete-attraction/<attraction_index>')
@@ -490,7 +494,7 @@ def complete():
 		cursor.execute(query)
 		num_cards = len(cursor.fetchall())
 
-		if num_cards is 0:
+		if num_cards == 0:
 			# No credit card on file
 			return render_template('payment.html', session=session, total_cost=locale.currency(total_cost, grouping=True))
 		else:
@@ -611,6 +615,84 @@ def remove_from_trip(activity_id):
 	return redirect(url_for('trip'))
 
 #####################################################################
+#                           WEATHER and AI                             #
+#####################################################################
+
+# Weather Data 
+
+
+def get_weather_data(api_key: str, location: str, start_date: str, end_date: str) -> dict:
+    """
+    Retrieves weather data from Visual Crossing Weather API for a given location and date range.
+
+    Args:
+        api_key (str): API key for Visual Crossing Weather API.
+        location (str): Location for which weather data is to be retrieved.
+        start_date (str): Start date of the date range in "MM/DD/YYYY" format.
+        end_date (str): End date of the date range in "MM/DD/YYYY" format.
+
+    Returns:
+        dict: Weather data in JSON format.
+
+    Raises:
+        requests.exceptions.RequestException: If there is an error in making the API request.
+    """
+    # Date Formatting as per API "YYYY-MM-DD"
+
+    base_url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{location}/{start_date}/{end_date}?unitGroup=metric&include=days&key={api_key}&contentType=json"
+
+    try:
+        response = requests.get(base_url)
+        response.raise_for_status()
+        data = response.json()
+        # print(json.dumps(data, indent=4, sort_keys=True))
+        return data
+    except requests.exceptions.RequestException as e:
+        print("Error:", e.__str__)
+        
+
+@app.route('/ai', methods=["GET", "POST"])
+def ai():
+    """
+    Renders the ai.html template.
+
+    Returns:
+        The rendered ai.html template.
+    """
+    if request.method == "POST":
+        global source, destination, start_date, end_date
+        source = request.form.get("source")
+        destination = request.form.get("destination")
+        start_date = request.form.get("date")
+        end_date = request.form.get("return")
+        # Calculating the number of days
+        no_of_day = (datetime.datetime.strptime(end_date, "%Y-%m-%d") - datetime.datetime.strptime(start_date, "%Y-%m-%d")).days
+        # Process the route input here
+        if no_of_day < 0:
+            flash("Return date should be greater than the Travel date (Start date).", "danger")
+            return redirect("/ai")
+        else:
+            try:
+                weather_data = get_weather_data(api_key, destination, start_date, end_date)
+            except requests.exceptions.RequestException as e:
+                flash("Error in retrieving weather data.{e.Error}", "danger")
+                return redirect("/ai")
+        
+        """Debugging"""
+        # Json data format printing
+        # print(json.dumps(weather_data, indent=4, sort_keys=True))
+        try:
+            plan = bard.generate_itinerary(source, destination, start_date, end_date, no_of_day)
+        except Exception as e:
+            flash("Error in generating the plan. Please try again later.", "danger")
+            return redirect("/ai")
+        if weather_data:
+            # Render the weather information in the template
+            return render_template("dashboard.html", weather_data=weather_data, plan=plan)
+    
+    return render_template('itinerary.html')
+
+#####################################################################
 #                         MAIN APPLICATION                          #
 #####################################################################
 
@@ -618,10 +700,10 @@ def remove_from_trip(activity_id):
 if __name__ == '__main__':
 
 	# Note: If your database uses a different password, enter it here.
-	db_pass = 'PulGarg01'
+	db_pass = 'Mudit@27052004'
 
 	# Make sure your database is started before running run.py
 	db_name = 'team1'
-	db = pymysql.connect(host='localhost', user='root', passwd=db_pass, db=db_name)
+	db = pymysql.connect(host='localhost', user='mudit05', passwd=db_pass, db=db_name)
 	app.run(debug=True,port=5001)
 	db.close()
