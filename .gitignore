@@ -1,1 +1,3 @@
 travenv
+/.env
+__pycache__

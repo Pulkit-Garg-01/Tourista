@@ -460,14 +460,16 @@ def trip():
     for row in data:
         print(row)
 
-    activities = [dict(date=row[0], name=row[1], price=locale.currency(row[2], grouping=True), start_time=row[3], end_time=row[4], id=row[5], attraction=row[6]) for row in data]  # Correctly map activity info.
+    activities = [dict(date=row[0], name=row[1], price='₹'+str(row[2]), start_time=row[3], end_time=row[4], id=row[5], attraction=row[6]) for row in data]  # Correctly map activity info.
 
     # Calculate total cost of trip
     query = get_trip_cost()
     cursor.execute(query)
     amount = cursor.fetchall()[0][0]
-    total_cost = locale.currency(amount, grouping=True) if amount is not None else locale.currency(0, grouping=True)
-
+    if amount is not None:
+        total_cost = '₹'+str(amount)
+    else:
+        total_cost='₹0'
     return render_template('trip.html', items=activities, session=session, total_cost=total_cost)
 
 
@@ -700,10 +702,10 @@ def ai():
 if __name__ == '__main__':
 
 	# Note: If your database uses a different password, enter it here.
-	db_pass = 'Mudit@27052004'
-
+	db_pass = os.environ.get("db_password")
+	db_user = os.environ.get("db_user")
 	# Make sure your database is started before running run.py
 	db_name = 'team1'
-	db = pymysql.connect(host='localhost', user='mudit05', passwd=db_pass, db=db_name)
+	db = pymysql.connect(host='localhost', user=db_user, passwd=db_pass, db=db_name)
 	app.run(debug=True,port=5001)
 	db.close()
