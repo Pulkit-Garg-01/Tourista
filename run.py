@@ -396,11 +396,7 @@ def add_to_trip():
 		# Update database
 		cursor.execute("insert into reserves (reserves_num_people, timeslot_id, username) values (" + str(num_people) + ", " + str(timeslot_id) + ", '" + session['username'] + "');")
 
-	# Get attraction name from index.
-	# cursor.execute("select * from attraction;")
-	# attractions = [dict(attraction_name=row[0], description=row[1], nearest_transport=row[2]) for row in cursor.fetchall()]
-	# attraction_name = attractions[int(attraction_index) - 1]['attraction_name']
-	# db.commit()
+
 
 	return render_template('create_activity.html', session=session)
 
@@ -460,7 +456,7 @@ def trip():
     for row in data:
         print(row)
 
-    activities = [dict(date=row[0], name=row[1], price='₹'+str(row[2]), start_time=row[3], end_time=row[4], id=row[5], attraction=row[6]) for row in data]  # Correctly map activity info.
+    activities = [dict(date=row[0], name=row[1], price='₹'+str(row[2]), start_time=row[3], end_time=row[4], id=row[5], attraction=row[6]) for 	row in data]  # Correctly map activity info.
 
     # Calculate total cost of trip
     query = get_trip_cost()
@@ -498,7 +494,7 @@ def complete():
 
 		if num_cards == 0:
 			# No credit card on file
-			return render_template('payment.html', session=session, total_cost=locale.currency(total_cost, grouping=True))
+			return render_template('payment.html', session=session, total_cost=total_cost)
 		else:
 			# Already have a credit card; they're fine.
 			return redirect(url_for('trip_booked'))
