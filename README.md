@@ -1,4 +1,4 @@
-# Travel-Planner
+# TOURISTA
 
 A web application that allows users to create travel itineraries for their vacations.
 
