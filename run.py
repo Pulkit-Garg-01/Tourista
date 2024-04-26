@@ -418,7 +418,7 @@ def create_activity():
 	start_time = request.form['start_time']
 	end_time = request.form['end_time']
 	date = request.form['date']
-	cost = request.form['cost'][1:]
+	cost = request.form['cost']
 
 	# Add attraction to trip
 	cursor = db.cursor()
